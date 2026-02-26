@@ -42,6 +42,25 @@ export default function ScorecardApp() {
     }
   }, [step]);
 
+  // ── Auto-advance: when all questions in current section are answered ────────
+  useEffect(() => {
+    if (step !== "quiz") return;
+    const section = SECTIONS[currentSection];
+    if (!section) return;
+    const allAnswered = section.questions.every((q) => scores[q.id] !== undefined);
+    if (allAnswered) {
+      const t = setTimeout(() => {
+        if (currentSection < SECTIONS.length - 1) {
+          setCurrentSection((p) => p + 1);
+        } else {
+          setStep("teaser");
+        }
+      }, 520); // brief pause so the last tap registers visually
+      return () => clearTimeout(t);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scores, currentSection, step]);
+
   // ── Computed values ──────────────────────────────────────────────────────────
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
   const dims = computeDimensions(scores);
@@ -72,11 +91,6 @@ export default function ScorecardApp() {
   function handleNext() {
     if (currentSection < SECTIONS.length - 1) setCurrentSection((p) => p + 1);
     else setStep("teaser");
-  }
-
-  function handlePrev() {
-    if (currentSection > 0) setCurrentSection((p) => p - 1);
-    else setStep("intro");
   }
 
   function getSectionScore(s: typeof SECTIONS[0]) {
@@ -187,6 +201,19 @@ export default function ScorecardApp() {
               your segment, and a personalized analysis — including what it means for your business trajectory.
             </p>
 
+            {/* Social Proof */}
+            <div className="social-proof" style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 28, lineHeight: 1 }}>🏆</div>
+              <div>
+                <div style={{ color: "#fff", fontSize: 13, fontWeight: 700, lineHeight: 1.4 }}>
+                  Trusted by 1,000+ specialty contractors
+                </div>
+                <div style={{ color: "#555", fontSize: 12, marginTop: 2 }}>
+                  We&apos;ve helped clients add over <strong style={{ color: "#00D9FF" }}>$2B in collective revenue</strong> — 92% hit their KPIs within 6 months.
+                </div>
+              </div>
+            </div>
+
             {/* Stats */}
             <div className="section-card" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, textAlign: "center", marginBottom: 20 }}>
               {[
@@ -202,7 +229,7 @@ export default function ScorecardApp() {
             </div>
 
             {/* What you'll discover */}
-            <div className="section-card" style={{ marginBottom: 20 }}>
+            <div className="section-card" style={{ marginBottom: 24 }}>
               <p style={{ color: "#666", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 12 }}>
                 What you&apos;ll discover
               </p>
@@ -227,8 +254,8 @@ export default function ScorecardApp() {
             <button className="cta-btn" onClick={() => setStep("quiz")}>
               Start My Free Assessment →
             </button>
-            <p style={{ color: "#333", fontSize: 12, textAlign: "center", marginTop: 12 }}>
-              We will never share your information.
+            <p style={{ color: "#444", fontSize: 12, textAlign: "center", marginTop: 12 }}>
+              🔒 We will never share your information.
             </p>
           </motion.div>
         )}
@@ -328,31 +355,28 @@ export default function ScorecardApp() {
               })}
             </div>
 
-            {/* Navigation */}
-            <div style={{ display: "flex", gap: 12, marginTop: 36 }}>
-              <button
-                onClick={handlePrev}
-                style={{
-                  flexShrink: 0, background: "#141414", border: "1px solid #222",
-                  color: "#666", borderRadius: 12, padding: "14px 18px", cursor: "pointer",
-                  fontSize: 14, fontWeight: 600,
-                }}
-              >←</button>
-              <button
-                className="cta-btn"
-                style={{ flex: 1 }}
-                disabled={!sectionAnswered}
-                onClick={handleNext}
-              >
-                {currentSection < SECTIONS.length - 1
-                  ? `Next: ${SECTIONS[currentSection + 1].title} →`
-                  : "See My Results →"}
-              </button>
-            </div>
+            {/* Auto-advance hint */}
             {!sectionAnswered && (
-              <p style={{ color: "#444", fontSize: 12, textAlign: "center", marginTop: 10 }}>
-                Answer all {section.questions.length} questions to continue
+              <p style={{ color: "#333", fontSize: 12, textAlign: "center", marginTop: 28 }}>
+                Answer all {section.questions.length} questions — we&apos;ll advance automatically
               </p>
+            )}
+            {sectionAnswered && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{ textAlign: "center", marginTop: 20 }}
+              >
+                <div style={{ color: "#00D9FF", fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
+                  ✓ Section complete — advancing…
+                </div>
+                {/* Manual advance button as fallback */}
+                <button className="nav-btn" onClick={handleNext}>
+                  {currentSection < SECTIONS.length - 1
+                    ? `Next: ${SECTIONS[currentSection + 1].title} →`
+                    : "See My Results →"}
+                </button>
+              </motion.div>
             )}
           </motion.div>
         )}
@@ -436,11 +460,11 @@ export default function ScorecardApp() {
               })}
             </div>
 
-            <button className="cta-btn" onClick={() => setStep("gate")}>
+            <button className="nav-btn" onClick={() => setStep("gate")}>
               Unlock My Full Results →
             </button>
-            <p style={{ color: "#333", fontSize: 12, textAlign: "center", marginTop: 10 }}>
-              Free · 30 seconds · We will never share your information.
+            <p style={{ color: "#444", fontSize: 12, textAlign: "center", marginTop: 10 }}>
+              🔒 Free · 30 seconds · We will never share your information.
             </p>
           </motion.div>
         )}
@@ -450,94 +474,118 @@ export default function ScorecardApp() {
         ═══════════════════════════════════════════ */}
         {step === "gate" && (
           <motion.div key="gate" {...fadeUp} style={{ padding: "32px 20px" }}>
-            <h2 style={{ fontSize: 24, fontWeight: 900, lineHeight: 1.2, marginBottom: 10 }}>
-              Where should we send your <span className="gradient-text">full results?</span>
-            </h2>
-            <p style={{ color: "#777", fontSize: 14, lineHeight: 1.55, marginBottom: 28 }}>
-              Your detailed scorecard, segment analysis, and personalized recommendations — delivered instantly.
-            </p>
+            {/* Blue accent header bar */}
+            <div style={{
+              background: "linear-gradient(135deg, rgba(0,40,80,0.6), rgba(39,145,232,0.12))",
+              border: "1px solid rgba(39,145,232,0.2)",
+              borderRadius: 16,
+              padding: "20px 20px 16px",
+              marginBottom: 28,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 8,
+                  background: "linear-gradient(135deg,#00D9FF,#2791e8)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontWeight: 900, fontSize: 12, color: "#000", flexShrink: 0,
+                }}>STG</div>
+                <span style={{ color: "#2791e8", fontSize: 12, fontWeight: 600 }}>Sales Transformation Group</span>
+              </div>
+              <h2 style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.2, marginBottom: 8 }}>
+                Where should we send your{" "}
+                <span className="gradient-text">full results?</span>
+              </h2>
+              <p style={{ color: "#6b9fd4", fontSize: 13, lineHeight: 1.55 }}>
+                Your detailed scorecard, segment analysis, and personalized recommendations — delivered instantly.
+              </p>
+            </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               {/* Name */}
               <div>
-                <label style={{ display: "block", color: "#666", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 8 }}>
-                  Full Name
-                </label>
-                <input
-                  className={`stg-input${gateErrors.name ? " error" : ""}`}
-                  type="text" placeholder="Your name"
-                  value={gateData.name}
-                  onChange={(e) => setGateData((p) => ({ ...p, name: e.target.value }))}
-                  onFocus={() => setGateErrors((p) => ({ ...p, name: "" }))}
-                />
+                <label className="gate-label">Full Name</label>
+                <div style={{ position: "relative" }}>
+                  <span className="input-icon">👤</span>
+                  <input
+                    className={`stg-input stg-input-icon${gateErrors.name ? " error" : ""}`}
+                    type="text" placeholder="Your name"
+                    value={gateData.name}
+                    onChange={(e) => setGateData((p) => ({ ...p, name: e.target.value }))}
+                    onFocus={() => setGateErrors((p) => ({ ...p, name: "" }))}
+                  />
+                </div>
                 {gateErrors.name && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 4 }}>{gateErrors.name}</p>}
               </div>
 
               {/* Role */}
               <div>
-                <label style={{ display: "block", color: "#666", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 8 }}>
-                  Your Role
-                </label>
-                <input
-                  className={`stg-input${gateErrors.role ? " error" : ""}`}
-                  type="text" placeholder="Owner / CEO / Sales Manager"
-                  value={gateData.role}
-                  onChange={(e) => setGateData((p) => ({ ...p, role: e.target.value }))}
-                  onFocus={() => setGateErrors((p) => ({ ...p, role: "" }))}
-                />
+                <label className="gate-label">Your Role</label>
+                <div style={{ position: "relative" }}>
+                  <span className="input-icon">💼</span>
+                  <input
+                    className={`stg-input stg-input-icon${gateErrors.role ? " error" : ""}`}
+                    type="text" placeholder="Owner / CEO / Sales Manager"
+                    value={gateData.role}
+                    onChange={(e) => setGateData((p) => ({ ...p, role: e.target.value }))}
+                    onFocus={() => setGateErrors((p) => ({ ...p, role: "" }))}
+                  />
+                </div>
                 {gateErrors.role && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 4 }}>{gateErrors.role}</p>}
               </div>
 
               {/* Company */}
               <div>
-                <label style={{ display: "block", color: "#666", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 8 }}>
-                  Company Name
-                </label>
-                <input
-                  className={`stg-input${gateErrors.company ? " error" : ""}`}
-                  type="text" placeholder="Your company"
-                  value={gateData.company}
-                  onChange={(e) => setGateData((p) => ({ ...p, company: e.target.value }))}
-                  onFocus={() => setGateErrors((p) => ({ ...p, company: "" }))}
-                />
+                <label className="gate-label">Company Name</label>
+                <div style={{ position: "relative" }}>
+                  <span className="input-icon">🏢</span>
+                  <input
+                    className={`stg-input stg-input-icon${gateErrors.company ? " error" : ""}`}
+                    type="text" placeholder="Your company"
+                    value={gateData.company}
+                    onChange={(e) => setGateData((p) => ({ ...p, company: e.target.value }))}
+                    onFocus={() => setGateErrors((p) => ({ ...p, company: "" }))}
+                  />
+                </div>
                 {gateErrors.company && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 4 }}>{gateErrors.company}</p>}
               </div>
 
               {/* Email */}
               <div>
-                <label style={{ display: "block", color: "#666", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 8 }}>
-                  Business Email
-                </label>
-                <input
-                  className={`stg-input${gateErrors.email ? " error" : ""}`}
-                  type="email" placeholder="you@yourcompany.com"
-                  inputMode="email" autoComplete="email"
-                  value={gateData.email}
-                  onChange={(e) => setGateData((p) => ({ ...p, email: e.target.value }))}
-                  onFocus={() => setGateErrors((p) => ({ ...p, email: "" }))}
-                />
+                <label className="gate-label">Business Email</label>
+                <div style={{ position: "relative" }}>
+                  <span className="input-icon">✉️</span>
+                  <input
+                    className={`stg-input stg-input-icon${gateErrors.email ? " error" : ""}`}
+                    type="email" placeholder="you@yourcompany.com"
+                    inputMode="email" autoComplete="email"
+                    value={gateData.email}
+                    onChange={(e) => setGateData((p) => ({ ...p, email: e.target.value }))}
+                    onFocus={() => setGateErrors((p) => ({ ...p, email: "" }))}
+                  />
+                </div>
                 {gateErrors.email && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 4 }}>{gateErrors.email}</p>}
               </div>
 
               {/* Phone */}
               <div>
-                <label style={{ display: "block", color: "#666", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 4 }}>
-                  Mobile Number
-                </label>
+                <label className="gate-label">Mobile Number</label>
                 <p style={{ color: "#444", fontSize: 11, marginBottom: 8 }}>so we can text you your results</p>
-                <input
-                  className={`stg-input phone-input${gateErrors.phone ? " error" : ""}`}
-                  type="tel" placeholder="(555) 555-5555"
-                  inputMode="tel" autoComplete="tel"
-                  value={gateData.phone}
-                  onChange={(e) => setGateData((p) => ({ ...p, phone: formatPhone(e.target.value) }))}
-                  onFocus={() => setGateErrors((p) => ({ ...p, phone: "" }))}
-                />
+                <div style={{ position: "relative" }}>
+                  <span className="input-icon">📱</span>
+                  <input
+                    className={`stg-input stg-input-icon${gateErrors.phone ? " error" : ""}`}
+                    type="tel" placeholder="(555) 555-5555"
+                    inputMode="tel" autoComplete="tel"
+                    value={gateData.phone}
+                    onChange={(e) => setGateData((p) => ({ ...p, phone: formatPhone(e.target.value) }))}
+                    onFocus={() => setGateErrors((p) => ({ ...p, phone: "" }))}
+                  />
+                </div>
                 {gateErrors.phone && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 4 }}>{gateErrors.phone}</p>}
               </div>
             </div>
 
-            {/* Identity-gated appointment note — only shows if Draper email/company detected */}
+            {/* Identity-gated appointment note */}
             {identity.isKnown && (
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
@@ -554,9 +602,9 @@ export default function ScorecardApp() {
 
             <div style={{ marginTop: 28 }}>
               <button className="cta-btn" disabled={submitting} onClick={handleSubmit}>
-                {submitting ? "Sending Your Results..." : "Get My Full Results →"}
+                {submitting ? "Sending Your Results..." : "🔓 Get My Full Results →"}
               </button>
-              <p style={{ color: "#333", fontSize: 12, textAlign: "center", marginTop: 12 }}>
+              <p style={{ color: "#444", fontSize: 12, textAlign: "center", marginTop: 12 }}>
                 🔒 We will never share your information. No spam, ever.
               </p>
             </div>
@@ -568,7 +616,8 @@ export default function ScorecardApp() {
         ═══════════════════════════════════════════ */}
         {step === "results" && (
           <motion.div key="results" {...fadeUp} style={{ padding: "32px 20px" }}>
-            {/* Header */}
+
+            {/* ── SECTION 1: Header ─────────────────────────────────────── */}
             <div style={{ marginBottom: 24 }}>
               <div style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
@@ -588,7 +637,9 @@ export default function ScorecardApp() {
               </p>
             </div>
 
-            {/* Score ring */}
+            {/* ── SECTION 2: Score Ring ────────────────────────────────── */}
+            <div className="results-section-header">📊 Your Overall Score</div>
+            <div className="section-divider" />
             <div className="section-card" style={{ textAlign: "center", padding: 28, marginBottom: 20 }}>
               <div style={{ position: "relative", display: "inline-block", marginBottom: 16 }}>
                 <svg width={140} height={140} viewBox="0 0 140 140">
@@ -618,19 +669,21 @@ export default function ScorecardApp() {
               <p style={{ color: "#666", fontSize: 13, fontStyle: "italic" }}>{segment.tagline}</p>
             </div>
 
-            {/* Description — dynamically generated */}
-            <div className="section-card" style={{ marginBottom: 16 }}>
+            {/* ── SECTION 3: Segment Description ──────────────────────── */}
+            <div className="results-section-header">🧠 What This Means For You</div>
+            <div className="section-divider" />
+            <div className="section-card" style={{ marginBottom: 20 }}>
               <p style={{ color: "#ccc", fontSize: 14, lineHeight: 1.72 }}>{segment.description}</p>
             </div>
 
-            {/* ── Identity-gated exit context from Rob's notes ──────────────── */}
+            {/* Identity-gated exit context from Rob's notes */}
             {identity.isKnown && identity.exitContext && (
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
                 className="section-card"
-                style={{ borderColor: "rgba(0,217,255,0.2)", background: "rgba(0,217,255,0.04)", marginBottom: 16 }}
+                style={{ borderColor: "rgba(0,217,255,0.2)", background: "rgba(0,217,255,0.04)", marginBottom: 20 }}
               >
                 <p style={{ color: "#00D9FF", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 8 }}>
                   📋 Based on Our Prior Conversation
@@ -641,11 +694,10 @@ export default function ScorecardApp() {
               </motion.div>
             )}
 
-            {/* Score breakdown */}
-            <div className="section-card" style={{ marginBottom: 16 }}>
-              <p style={{ fontWeight: 700, fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 18 }}>
-                Score Breakdown
-              </p>
+            {/* ── SECTION 4: Score Breakdown ───────────────────────────── */}
+            <div className="results-section-header">📈 Score Breakdown</div>
+            <div className="section-divider" />
+            <div className="section-card" style={{ marginBottom: 20 }}>
               {SECTIONS.map((s) => {
                 const ss = getSectionScore(s);
                 const c = scoreColor(ss.pct);
@@ -669,11 +721,10 @@ export default function ScorecardApp() {
               })}
             </div>
 
-            {/* Strengths — dynamically built from scores */}
-            <div className="section-card" style={{ marginBottom: 16 }}>
-              <p style={{ fontWeight: 700, fontSize: 11, color: "#22c55e", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 14 }}>
-                ✅ What Your Scores Reveal as Strengths
-              </p>
+            {/* ── SECTION 5: Strengths ────────────────────────────────── */}
+            <div className="results-section-header">✅ What You&apos;re Doing Right</div>
+            <div className="section-divider" />
+            <div className="section-card" style={{ marginBottom: 20 }}>
               {segment.strengths.map((s, i) => (
                 <div key={i} style={{ display: "flex", gap: 10, marginBottom: i < segment.strengths.length - 1 ? 12 : 0, alignItems: "flex-start" }}>
                   <div style={{
@@ -687,11 +738,10 @@ export default function ScorecardApp() {
               ))}
             </div>
 
-            {/* Opportunities — derived from lowest dimension */}
-            <div className="section-card" style={{ marginBottom: 16 }}>
-              <p style={{ fontWeight: 700, fontSize: 11, color: "#FF6B35", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 14 }}>
-                🎯 Highest-ROI Opportunities Right Now
-              </p>
+            {/* ── SECTION 6: Opportunities ─────────────────────────────── */}
+            <div className="results-section-header">🎯 Highest-ROI Opportunities</div>
+            <div className="section-divider" />
+            <div className="section-card" style={{ marginBottom: 20 }}>
               {segment.opportunities.map((o, i) => (
                 <div key={i} style={{ display: "flex", gap: 10, marginBottom: i < segment.opportunities.length - 1 ? 12 : 0, alignItems: "flex-start" }}>
                   <div style={{
@@ -705,23 +755,21 @@ export default function ScorecardApp() {
               ))}
             </div>
 
-            {/* Insight */}
-            <div className="section-card" style={{ borderColor: "rgba(0,217,255,0.2)", background: "rgba(0,217,255,0.04)", marginBottom: 16 }}>
-              <p style={{ color: "#00D9FF", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 10 }}>
-                💡 The Insight That Changes the Math
-              </p>
+            {/* ── SECTION 7: Key Insight ───────────────────────────────── */}
+            <div className="results-section-header">💡 The Insight That Changes the Math</div>
+            <div className="section-divider" />
+            <div className="section-card" style={{ borderColor: "rgba(0,217,255,0.2)", background: "rgba(0,217,255,0.04)", marginBottom: 20 }}>
               <p style={{ color: "#ccc", fontSize: 14, lineHeight: 1.72 }}>{segment.insight}</p>
             </div>
 
-            {/* Urgency */}
+            {/* ── SECTION 8: Urgency ───────────────────────────────────── */}
+            <div className="results-section-header">⏱ Why the Timing Matters</div>
+            <div className="section-divider" />
             <div className="section-card" style={{ borderColor: "rgba(255,107,53,0.2)", background: "rgba(255,107,53,0.04)", marginBottom: 20 }}>
-              <p style={{ color: "#FF6B35", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 10 }}>
-                ⏱ Why the Timing Matters
-              </p>
               <p style={{ color: "#ccc", fontSize: 14, lineHeight: 1.72 }}>{segment.urgency}</p>
             </div>
 
-            {/* ── Identity-gated appointment note — results page ─────────────── */}
+            {/* Identity-gated appointment note — results page */}
             {identity.isKnown && (
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
@@ -739,30 +787,73 @@ export default function ScorecardApp() {
               </motion.div>
             )}
 
-            {/* CTAs */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <a
-                href="https://salestransformationgroup.com"
-                target="_blank" rel="noopener noreferrer"
-                style={{ display: "block", textAlign: "center", textDecoration: "none" }}
-                className="cta-btn"
-              >
-                Book My Strategy Call →
-              </a>
-              <a
-                href="tel:8557848143"
-                style={{ display: "block", textAlign: "center", textDecoration: "none" }}
-                className="cta-btn cta-btn-coral"
-              >
-                Call Us: (855) 784-8143
-              </a>
+            {/* ── SECTION 9: Social Proof ──────────────────────────────── */}
+            <div className="social-proof" style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>🏆</div>
+              <div>
+                <div style={{ color: "#fff", fontSize: 13, fontWeight: 700, lineHeight: 1.4, marginBottom: 4 }}>
+                  1,000+ contractor clients trust STG
+                </div>
+                <div style={{ color: "#777", fontSize: 12, lineHeight: 1.5 }}>
+                  Over <strong style={{ color: "#00D9FF" }}>$2B in collective revenue</strong> added for our clients.{" "}
+                  <strong style={{ color: "#22c55e" }}>92% of clients</strong> hit their KPIs within 6 months.{" "}
+                  Industry-average close rate improvement: <strong style={{ color: "#22c55e" }}>30–40%</strong> in the first 6 months.
+                </div>
+              </div>
             </div>
 
-            <p style={{ color: "#2a2a2a", fontSize: 12, textAlign: "center", marginTop: 16 }}>
-              🔒 We will never share your information.
-            </p>
+            {/* ── SECTION 10: Dual CTA ─────────────────────────────────── */}
+            <div className="results-section-header">🚀 Your Next Step</div>
+            <div className="section-divider" />
 
-            <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid #151515", textAlign: "center" }}>
+            <div style={{
+              background: "linear-gradient(135deg, rgba(0,40,80,0.5), rgba(0,30,60,0.3))",
+              border: "1px solid rgba(39,145,232,0.2)",
+              borderRadius: 20,
+              padding: "24px 20px",
+              marginBottom: 20,
+            }}>
+              <p style={{ color: "#aaa", fontSize: 14, lineHeight: 1.65, marginBottom: 20, textAlign: "center" }}>
+                Based on your score, a 20-minute conversation with one of our Senior Growth Consultants could
+                identify <strong style={{ color: "#fff" }}>the single change that moves your revenue most</strong>.
+                No pitch. No pressure. Just clarity.
+              </p>
+
+              {/* Option 1 — Book a Call */}
+              <a
+                href="https://calendly.com/robert-salestransformationgroup/stg-discovery-call"
+                target="_blank" rel="noopener noreferrer"
+                style={{ display: "block", textDecoration: "none", marginBottom: 14 }}
+              >
+                <button className="cta-btn" style={{ width: "100%", fontSize: 15 }}>
+                  📅 Book a Time with a Sr. Consultant
+                </button>
+              </a>
+
+              {/* Divider */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                <div style={{ flex: 1, height: 1, background: "#222" }} />
+                <span style={{ color: "#333", fontSize: 12 }}>or</span>
+                <div style={{ flex: 1, height: 1, background: "#222" }} />
+              </div>
+
+              {/* Option 2 — Call Now */}
+              <a
+                href="tel:2393645062"
+                style={{ display: "block", textDecoration: "none" }}
+              >
+                <button className="cta-btn cta-btn-red" style={{ width: "100%", fontSize: 17, padding: "20px 24px", letterSpacing: "0.3px" }}>
+                  📞 Let&apos;s Talk Now — (239) 364-5062
+                </button>
+              </a>
+
+              <p style={{ color: "#333", fontSize: 12, textAlign: "center", marginTop: 14 }}>
+                🔒 We will never share your information.
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid #151515", textAlign: "center" }}>
               <p style={{ color: "#444", fontSize: 12 }}>Sales Transformation Group · salestransformationgroup.com</p>
               <p style={{ color: "#333", fontSize: 11, marginTop: 4 }}>Serving specialty contractors since 2018</p>
             </div>

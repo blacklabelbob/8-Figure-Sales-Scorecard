@@ -2,25 +2,263 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-html {
-  -webkit-text-size-adjust: 100%;
-}
+html { -webkit-text-size-adjust: 100%; }
 
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: #0A0A0A;
   color: white;
+  font-family: system-ui, -apple-system, sans-serif;
 }
 
-input, button {
+input, button { -webkit-tap-highlight-color: transparent; }
+::selection { background: #00D9FF33; }
+
+/* ─── GRADIENT TEXT ──────────────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #00D9FF, #2791e8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.gradient-text-coral {
+  background: linear-gradient(135deg, #FF6B35, #ff8c5a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── PRIMARY CTA BUTTON (coral/orange) ─────────────────────────── */
+.cta-btn {
+  width: 100%;
+  padding: 18px 24px;
+  background: linear-gradient(135deg, #FF6B35, #e8541f);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  text-align: center;
+  display: block;
+  text-decoration: none;
+  box-shadow: 0 4px 24px rgba(255, 107, 53, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  -webkit-font-smoothing: antialiased;
+}
+.cta-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 32px rgba(255, 107, 53, 0.45);
+}
+.cta-btn:active { transform: scale(0.98); }
+.cta-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Cyan variant */
+.cta-btn-cyan {
+  background: linear-gradient(135deg, #00D9FF, #2791e8);
+  box-shadow: 0 4px 24px rgba(0, 217, 255, 0.28);
+  color: #000;
+}
+.cta-btn-cyan:hover { box-shadow: 0 6px 32px rgba(0, 217, 255, 0.38); }
+
+/* Coral secondary */
+.cta-btn-coral {
+  background: linear-gradient(135deg, #FF6B35, #c94b15);
+  box-shadow: 0 4px 24px rgba(255, 107, 53, 0.35);
+  color: #fff;
+}
+
+/* Red variant — "Let's Talk Now" */
+.cta-btn-red {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 4px 24px rgba(239, 68, 68, 0.35);
+  color: #fff;
+}
+.cta-btn-red:hover { box-shadow: 0 6px 32px rgba(239, 68, 68, 0.45); }
+
+/* ─── NAV BUTTON — orange, rounded, centered, larger ─────────────── */
+/* Used for quiz auto-advance fallback, teaser "Unlock" button        */
+.nav-btn {
+  display: block;
+  width: 90%;
+  margin: 0 auto;
+  padding: 17px 28px;
+  background: linear-gradient(135deg, #FF8C00, #FF6B35, #e84e00);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  border: none;
+  border-radius: 50px;          /* pill / fully rounded */
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 5px 28px rgba(255, 108, 0, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  -webkit-font-smoothing: antialiased;
+}
+.nav-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 36px rgba(255, 108, 0, 0.55);
+}
+.nav-btn:active { transform: scale(0.97); }
+.nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ─── SECTION CARDS ──────────────────────────────────────────────── */
+.section-card {
+  background: #141414;
+  border: 1px solid #1E1E1E;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+/* ─── SECTION DIVIDER (results page) ────────────────────────────── */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #2a2a2a 20%, #2a2a2a 80%, transparent);
+  margin: 4px 0 20px;
+}
+
+/* ─── RESULTS SECTION HEADER ─────────────────────────────────────── */
+.results-section-header {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #555;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.results-section-header::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #1e1e1e;
+}
+
+/* ─── SECTION LABEL ──────────────────────────────────────────────── */
+.section-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #444;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #222;
+}
+
+/* ─── GATE FORM LABEL ────────────────────────────────────────────── */
+.gate-label {
+  display: block;
+  color: #5b9bd4;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+}
+
+/* ─── FORM INPUTS ────────────────────────────────────────────────── */
+.stg-input {
+  width: 100%;
+  background: #0c1828;
+  border: 1.5px solid #1a3a5c;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 17px;
+  font-family: inherit;
+  padding: 15px 16px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  -webkit-appearance: none;
+}
+.stg-input:focus {
+  border-color: #2791e8;
+  box-shadow: 0 0 0 3px rgba(39, 145, 232, 0.15);
+}
+.stg-input.error {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+.stg-input::placeholder { color: #2a4a6a; }
+
+/* Input with leading icon */
+.stg-input-icon {
+  padding-left: 44px;
+}
+.input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  pointer-events: none;
+  line-height: 1;
+}
+
+/* ─── PROGRESS FILL ──────────────────────────────────────────────── */
+.progress-fill {
+  background: linear-gradient(90deg, #00D9FF, #2791e8);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+/* ─── PULSE DOT ──────────────────────────────────────────────────── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.75); }
+}
+
+/* ─── SCORE RING ANIMATION ───────────────────────────────────────── */
+@keyframes ring-fill {
+  from { stroke-dashoffset: 345.4; }
+}
+
+/* ─── RATING BUTTON ──────────────────────────────────────────────── */
+.rating-btn {
+  border: 1.5px solid #222;
+  background: #111;
+  border-radius: 12px;
+  padding: 14px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
-::selection {
-  background: #00D9FF33;
+/* ─── SOCIAL PROOF BAR ───────────────────────────────────────────── */
+.social-proof {
+  background: rgba(0,217,255,0.05);
+  border: 1px solid rgba(0,217,255,0.12);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 }
