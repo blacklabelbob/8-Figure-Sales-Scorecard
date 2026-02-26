@@ -1,4 +1,8 @@
-// STG Scorecard Data & Types
+// ─────────────────────────────────────────────────────────────────────────────
+// STG Scorecard — Pure Answer-Driven Scoring Engine
+// Every result is derived 100% from the respondent's answers.
+// Identity detection is a separate layer (see identifyRespondent()).
+// ─────────────────────────────────────────────────────────────────────────────
 
 export type Scores = Record<string, number>;
 
@@ -28,7 +32,62 @@ export type SegmentResult = {
   opportunities: string[];
   insight: string;
   urgency: string;
+  // Rob's-notes overlay — only populated when identity is confirmed
+  robNotes?: string;
 };
+
+// ─── IDENTITY DETECTION ──────────────────────────────────────────────────────
+// Returns true if the email or company string matches known Draper Fence identity.
+// Fuzzy: handles typos, capitalization, partial matches.
+
+export type KnownIdentity = {
+  isKnown: boolean;
+  personName?: string;
+  companyName?: string;
+  hasAppointment?: boolean;
+  appointmentNote?: string;
+  exitContext?: string;
+};
+
+export function identifyRespondent(email: string, company: string): KnownIdentity {
+  const e = email.toLowerCase().trim();
+  const c = company.toLowerCase().trim();
+
+  const draperEmailPatterns = [
+    "hdraper@draperconstruction.net",
+    "hdraper@draper",
+    "homa@draper",
+    "houma@draper",
+    "wahab",
+  ];
+  const draperCompanyPatterns = [
+    "draper fence",
+    "draper fencing",
+    "draper rail",
+    "draper construction",
+    "draper f",
+  ];
+
+  const emailMatch = draperEmailPatterns.some((p) => e.includes(p));
+  const companyMatch = draperCompanyPatterns.some((p) => c.includes(p));
+
+  if (emailMatch || companyMatch) {
+    return {
+      isKnown: true,
+      personName: "Homa",
+      companyName: "Draper Fence & Rail",
+      hasAppointment: true,
+      appointmentNote:
+        "📅 You have an appointment with our Senior Growth Consultant Rob at 11 AM to discuss next steps on the proposal.",
+      exitContext:
+        "Based on our prior conversation, we know exit readiness is a priority for you — so we've weighted your results with that lens. The numbers below reflect what a buyer would actually see today.",
+    };
+  }
+
+  return { isKnown: false };
+}
+
+// ─── QUESTIONS ────────────────────────────────────────────────────────────────
 
 export const SECTIONS: Section[] = [
   {
@@ -78,13 +137,13 @@ export const SECTIONS: Section[] = [
       {
         id: "neighborhood-marketing",
         text: "Does your team systematically market every jobsite and neighborhood?",
-        context: "Canvassing near every installed job is one of the highest-ROI marketing activities in fence/rail.",
+        context: "Canvassing near every installed job is one of the highest-ROI activities in this trade.",
         labels: ["Never", "Always"],
       },
       {
         id: "addons",
         text: "What % of your orders include add-ons or upgrades?",
-        context: "50%+ of jobs should include at least one upgrade — gates, premium materials, railings, etc.",
+        context: "50%+ of jobs should include at least one upgrade — gates, premium materials, specialty installs.",
         labels: ["Rarely", "Most jobs"],
       },
     ],
@@ -98,13 +157,13 @@ export const SECTIONS: Section[] = [
       {
         id: "hiring-vsl",
         text: "Do you have a structured hiring process with a pre-screen video or VSL?",
-        context: "The best A-players evaluate YOU before they apply. A hiring VSL pre-qualifies candidates.",
+        context: "A-players evaluate YOU before they apply. A hiring VSL pre-qualifies candidates.",
         labels: ["No process", "Fully built"],
       },
       {
         id: "onboarding",
         text: "Do you have a documented onboarding playbook and 30/60/90-day schedule?",
-        context: "70% of reps fail in 6 months. A structured onboarding system changes that.",
+        context: "70% of reps fail in 6 months — almost entirely because of zero onboarding structure.",
         labels: ["Sink or swim", "Full playbook"],
       },
       {
@@ -148,7 +207,7 @@ export const SECTIONS: Section[] = [
       {
         id: "kpis",
         text: "Are you measuring and reviewing KPIs with your team on a regular cadence?",
-        context: "Appointments set, close rate, average ticket, follow-up rate — measured weekly.",
+        context: "Appointments set, close rate, average ticket, follow-up rate — reviewed weekly.",
         labels: ["Not measured", "Full dashboard"],
       },
     ],
@@ -174,13 +233,13 @@ export const SECTIONS: Section[] = [
       {
         id: "documented-playbook",
         text: "Is your complete sales process documented in a written playbook?",
-        context: "Buyers pay a 2×+ premium for businesses where the process outlives the owner.",
+        context: "Buyers pay a 2×+ multiple premium for businesses where the process outlives the owner.",
         labels: ["In my head only", "Fully documented"],
       },
       {
         id: "revenue-predictability",
         text: "How predictable is your revenue month-to-month?",
-        context: "Revenue that swings 40%+ monthly is a valuation killer with PE buyers.",
+        context: "Revenue that swings 40%+ monthly is a valuation killer with PE and strategic buyers.",
         labels: ["Very volatile", "Very predictable"],
       },
     ],
@@ -190,160 +249,490 @@ export const SECTIONS: Section[] = [
 export const TOTAL_QUESTIONS = SECTIONS.reduce((a, s) => a + s.questions.length, 0);
 export const MAX_SCORE = TOTAL_QUESTIONS * 5;
 
-export function classifySegment(scores: Scores, total: number): SegmentResult {
-  const pct = (total / MAX_SCORE) * 100;
+// ─── DIMENSION SCORES ────────────────────────────────────────────────────────
+// Each dimension is a 0–100 percentage derived purely from the answers.
 
-  const valuationKeys = ["owner-dependency", "documented-playbook", "revenue-predictability", "referral-program"];
-  const valuationScore = valuationKeys.reduce((a, k) => a + (scores[k] || 0), 0);
+export type Dimensions = {
+  process: number;     // Sales process maturity
+  team: number;        // Team self-generation & output
+  people: number;      // Hiring / onboarding systems
+  coaching: number;    // Accountability & coaching cadence
+  valuation: number;   // Exit / owner-independence readiness
+  overall: number;     // Weighted composite
+};
 
-  const processKeys = ["defined-process", "contact-speed", "onspot-estimates", "close-tracking"];
-  const processScore = processKeys.reduce((a, k) => a + (scores[k] || 0), 0);
+export function computeDimensions(scores: Scores): Dimensions {
+  const pct = (keys: string[]) => {
+    const total = keys.reduce((a, k) => a + (scores[k] ?? 0), 0);
+    return Math.round((total / (keys.length * 5)) * 100);
+  };
 
-  const peopleKeys = ["hiring-vsl", "onboarding", "screening", "employment-agreement"];
-  const peopleScore = peopleKeys.reduce((a, k) => a + (scores[k] || 0), 0);
+  const process   = pct(["defined-process", "contact-speed", "onspot-estimates", "close-tracking"]);
+  const team      = pct(["self-generated", "neighborhood-marketing", "addons"]);
+  const people    = pct(["hiring-vsl", "onboarding", "screening", "employment-agreement"]);
+  const coaching  = pct(["ride-alongs", "role-play", "pipeline-followup", "kpis"]);
+  const valuation = pct(["referral-program", "owner-dependency", "documented-playbook", "revenue-predictability"]);
 
-  const lowValuation = valuationScore <= 10;
-  const lowProcess = processScore <= 10;
-  const lowPeople = peopleScore <= 10;
+  // Weighted composite: valuation & process weighted slightly higher
+  const overall = Math.round(
+    process * 0.22 +
+    team * 0.18 +
+    people * 0.18 +
+    coaching * 0.18 +
+    valuation * 0.24
+  );
 
-  // Exit-Ready Builder (Homa's profile — building to sell, owner-dependent)
-  if (lowValuation && pct < 65) {
+  return { process, team, people, coaching, valuation, overall };
+}
+
+// ─── SEGMENTATION ENGINE ─────────────────────────────────────────────────────
+// Decision tree based purely on dimension scores.
+// No names, no hardcoded companies — identity overlay is separate.
+
+export function classifySegment(scores: Scores): SegmentResult {
+  const d = computeDimensions(scores);
+
+  // ── Segment 1: Exit-Ready Builder ──────────────────────────────────────────
+  // Low valuation readiness + moderate-to-decent overall = knows the business,
+  // hasn't built the infrastructure a buyer needs to see.
+  if (d.valuation <= 45 && d.overall < 68) {
+    const ownerDep   = scores["owner-dependency"]    ?? 0;
+    const playbook   = scores["documented-playbook"] ?? 0;
+    const revPred    = scores["revenue-predictability"] ?? 0;
+    const referral   = scores["referral-program"]    ?? 0;
+
+    // Granular sub-flavors within Exit-Ready Builder
+    const deepOwnerDep = ownerDep <= 2;
+    const noPlaybook   = playbook <= 2;
+    const volatileRev  = revPred <= 2;
+    const noReferral   = referral <= 2;
+
+    const gaps: string[] = [];
+    if (deepOwnerDep) gaps.push("owner dependency");
+    if (noPlaybook)   gaps.push("undocumented process");
+    if (volatileRev)  gaps.push("revenue volatility");
+    if (noReferral)   gaps.push("no referral engine");
+
+    const primaryGap = gaps[0] ?? "valuation infrastructure";
+
+    const descriptionVariants: Record<string, string> = {
+      "owner dependency":
+        "The business runs because you run it. Customers trust you specifically. Deals close because you're in the room. That's genuinely impressive — and it's also the single variable that will compress your exit multiple the most. Buyers don't pay full price for a business that leaves with the owner.",
+      "undocumented process":
+        "Your sales instincts are sharp — the problem is they live entirely in your head. There's no written playbook, no documented process, no system a new hire can follow on day one. That makes the business hard to scale and even harder to sell at the multiple it deserves.",
+      "revenue volatility":
+        "Month-to-month revenue swings are one of the first things a sophisticated buyer will flag in due diligence. Predictable, recurring-ish revenue gets priced at a premium. Volatile revenue gets discounted — even if the annual number looks strong.",
+      "no referral engine":
+        "Referral revenue is the highest-margin, most defensible revenue a specialty contractor can show a buyer. Without a structured referral program, you're leaving both money and multiple on the table every single month.",
+      "valuation infrastructure":
+        "The operational foundation is solid — but the systems a buyer needs to see aren't visible yet. Sales infrastructure, documented processes, and predictable pipelines are what move the needle from a 4× to a 7× multiple.",
+    };
+
+    const opportunityVariants: Record<string, string[]> = {
+      "owner dependency": [
+        "Shift from 'I close deals' to 'my process closes deals' — document every step so it works without you",
+        "Track close rate by rep separately from your own — make the gap visible so you can close it",
+        "Build a referral engine that generates pipeline your team can own and work independently",
+        "Reduce owner-mention rate in reviews: from 'the owner handled it' to 'the team handled it'",
+      ],
+      "undocumented process": [
+        "Build a written sales playbook — even a basic one raises valuation and accelerates onboarding",
+        "Document your best 3 objection responses so any rep can handle them, not just you",
+        "Create a follow-up cadence template so nothing falls through the cracks when you're not watching",
+        "Set up KPI tracking — even a simple spreadsheet — so you can show a buyer a trend line",
+      ],
+      "revenue volatility": [
+        "Install a weekly pipeline review cadence so you see revenue problems 4–6 weeks before they hit",
+        "Build a referral program to create a second, more consistent pipeline layer",
+        "Create a seasonal follow-up system so slow months have active pipeline being worked",
+        "Track close rate monthly — even small improvements compound fast into more predictable revenue",
+      ],
+      "no referral engine": [
+        "Build a simple referral ask into every job completion — most contractors close 30%+ of referrals",
+        "Create a neighborhood canvassing system so every job generates 3–5 new opportunities",
+        "Develop a past-customer follow-up sequence — past buyers are your highest-converting leads",
+        "Add a referral incentive to your sales role agreements so reps are rewarded for generating them",
+      ],
+      "valuation infrastructure": [
+        "Document your complete sales process — this is the #1 thing buyers look for in due diligence",
+        "Install measurable KPIs so you can show a buyer 12+ months of improving performance data",
+        "Build a referral engine to make revenue more predictable and defensible",
+        "Reduce owner dependency in every part of the sales cycle — each step you remove adds multiple",
+      ],
+    };
+
+    const insightVariants: Record<string, string> = {
+      "owner dependency":
+        `Specialty contractors with documented, owner-independent sales systems sell for 6–9× EBITDA. Owner-dependent businesses typically price at 3–5×. On a business doing $2M revenue with 12% EBITDA, that gap is $480K–$960K in exit value — sitting idle right now.`,
+      "undocumented process":
+        `Buyers pay a 2× multiple premium when processes are fully documented. It's not about whether the business performs — it's about whether it performs without the founder. Documented systems signal that the business is transferable. That's what moves the number.`,
+      "revenue volatility":
+        `Revenue swings of 40%+ month-to-month reduce EBITDA multiples by 1–2× in most specialty contractor transactions. Buyers model risk — and volatility is priced as risk. A 12-month trend of tightening variance can literally add six figures to your sale price.`,
+      "no referral engine":
+        `Referral revenue closes at 3× the rate of cold leads and costs almost nothing to generate. Contractors with active referral programs show buyers a defensible, low-cost growth channel — which is worth more at exit than equivalent cold-lead revenue.`,
+      "valuation infrastructure":
+        `The gap between a 4.5× and a 6.5× multiple isn't usually revenue — it's documentation, systems, and owner independence. On a $2M EBITDA business, closing that gap is worth $4M. Most of the work to get there takes 12–18 months to install and demonstrate.`,
+    };
+
     return {
       primary: "Exit-Ready Builder",
       secondary: "Valuation Gap",
       emoji: "🎯",
       color: "#00D9FF",
-      tagline: "You're building something valuable — but buyers won't see it yet.",
-      description:
-        "You have a real business with real customers and a strong reputation — Draper Fence & Rail has been delivering exceptional work since 2014. The challenge: your sales operation is still wired to YOUR instincts, YOUR relationships, YOUR presence on every deal. That's worth less on paper than it is in reality. The good news? This gap is entirely fixable, and closing it adds serious dollars to an exit valuation.",
-      strengths: [
-        "Strong local reputation and loyal customer base in the Greater Indianapolis area",
-        "Quality-first, no-subcontractor culture that PE buyers explicitly value",
-        "Lifetime craftsmanship warranty — a differentiated, documentable competitive advantage",
-        "Clear vision for growth and an exit timeline in the next 2–3 years",
-        "Established operational infrastructure with 10+ years of delivery history",
-      ],
-      opportunities: [
-        "Document your sales process so every estimate and follow-up happens systematically — not because you're watching",
-        "Build a referral engine — the highest-margin, most predictable revenue stream a contractor can have",
-        "Install measurable KPIs to show buyers a predictable, growing revenue story over 12–18 months",
-        "Create a repeatable hiring & onboarding system before your next key hire so they ramp in 90 days, not 9 months",
-        "Reduce owner-mention rate in reviews — move from 'Homa handled it' to 'the team handled it'",
-      ],
-      insight:
-        "Specialty contractors with documented sales systems and owner-independent pipelines sell for 6–9× EBITDA. Without those systems, buyers price in your personal involvement as a risk — typically 3–4×. On a $2M fence & rail business with 10% EBITDA, that gap is $400K–$1M in exit value sitting on the table right now.",
-      urgency:
-        "If you want to exit in the next 2–3 years, the window to install these systems is right now. Buyers want to see 12–18 months of owner-independent performance before they sign. That clock starts the day you start building.",
+      tagline: `You're building something valuable — buyers just can't see it yet.`,
+      description: descriptionVariants[primaryGap],
+      strengths: buildStrengths(d, scores),
+      opportunities: opportunityVariants[primaryGap],
+      insight: insightVariants[primaryGap],
+      urgency: buildUrgency(d, "exit"),
     };
   }
 
-  if (lowProcess && pct < 55) {
+  // ── Segment 2: Exhausted Scaler ─────────────────────────────────────────────
+  // Low process + owner doing most of the selling + moderate team score
+  if (d.process <= 45 && d.overall < 60) {
+    const ownerDep = scores["owner-dependency"] ?? 0;
+    const closeTrk = scores["close-tracking"]   ?? 0;
+    const defined  = scores["defined-process"]  ?? 0;
+
+    const noData       = closeTrk <= 2;
+    const noProcess    = defined <= 2;
+    const ownerSelling = ownerDep <= 2;
+
+    const primaryFlavor = ownerSelling ? "owner-selling"
+      : noProcess ? "no-process"
+      : noData    ? "no-data"
+      : "default";
+
+    const descriptions: Record<string, string> = {
+      "owner-selling":
+        "Your instincts close deals your team can't replicate. You know it, they know it, and every customer who asks for you by name confirms it. That's not a compliment — it's a ceiling. The business can only grow as fast as you can personally show up, estimate, and follow up.",
+      "no-process":
+        "Every rep is improvising. Some are better at it than others, which means your results are wildly inconsistent depending on who picks up the lead. You can't coach what isn't written down, and you can't scale what only exists in someone's head.",
+      "no-data":
+        "You're flying without instruments. You probably have a gut sense for who your best rep is — but no data to back it up, no close rate by person, no follow-up rate, no accountability dashboard. The reps who are quietly losing deals are invisible until it's too late.",
+      "default":
+        "The sales operation runs — just not consistently. Some weeks are strong, some aren't, and the difference usually comes down to who's having a good week rather than the system working reliably.",
+    };
+
+    const opportunities: Record<string, string[]> = {
+      "owner-selling": [
+        "Codify YOUR selling approach into a written process anyone can follow — this is the highest-leverage thing you can do",
+        "Set a 90-day goal: have your best rep close their first deal completely without you in the room",
+        "Start measuring close rate per rep so the gaps are visible, not just felt",
+        "Build a structured follow-up system so leads don't die when you're not the one working them",
+      ],
+      "no-process": [
+        "Document the 5 steps every sale goes through — even rough notes beat no notes",
+        "Create a standard estimate template so every rep presents value the same way",
+        "Build a 3-touch follow-up sequence and make it non-negotiable for every open quote",
+        "Run one weekly team meeting focused only on pipeline — what's open, what's stuck, what's closing",
+      ],
+      "no-data": [
+        "Start tracking close rate per rep this week — even a simple spreadsheet changes behavior",
+        "Measure lead response time — the fastest-responding contractor wins 40%+ of the time",
+        "Create a weekly KPI review so every rep knows their numbers before Friday",
+        "Use your data to identify your #1 bottleneck — is it leads, close rate, or follow-up failure?",
+      ],
+      "default": [
+        "Define your sales process end-to-end so consistency is the default, not the exception",
+        "Install a weekly accountability cadence so performance gaps are visible in real time",
+        "Measure and share close rate data with the team — transparency drives improvement",
+        "Build a follow-up system so no quote goes more than 72 hours without a touch",
+      ],
+    };
+
     return {
       primary: "Exhausted Scaler",
-      secondary: "Process-Deficient",
+      secondary: "Process Gap",
       emoji: "⚡",
       color: "#FF6B35",
-      tagline: "You're the best salesperson on your team. That's the problem.",
-      description:
-        "Your instincts close deals your team can't. You know it, they know it, and every customer who asks for you by name confirms it. That dependency is both your growth ceiling and a valuation killer.",
-      strengths: [
-        "Strong personal sales ability and deep customer trust",
-        "Real revenue flowing through the business",
-        "Market presence strong enough to attract new clients consistently",
-      ],
-      opportunities: [
-        "Codify YOUR selling approach into a repeatable process anyone can follow",
-        "Start measuring close rates and follow-up rates per rep",
-        "Build a pre-call or on-site estimate system to accelerate deal velocity",
-        "Create accountability structures that don't require your direct involvement",
-      ],
+      tagline: "You're the ceiling. The business can only scale as far as you can personally reach.",
+      description: descriptions[primaryFlavor],
+      strengths: buildStrengths(d, scores),
+      opportunities: opportunities[primaryFlavor],
       insight:
-        "The fastest ROI in contractor sales isn't more marketing spend — it's closing 10–15 more percentage points of the leads you're already getting.",
-      urgency:
-        "Every month without a documented process is a month your team is losing deals you'd have closed yourself — and a month further from a premium exit multiple.",
+        "Most contractors at this stage aren't close-rate problems — they're follow-up problems. 80% of closed deals happen after the 5th contact. The average contractor rep stops at 1–2. Closing that gap alone — without changing anything else — typically moves revenue 15–25% in 90 days.",
+      urgency: buildUrgency(d, "scale"),
     };
   }
 
-  if (lowPeople && pct < 60) {
+  // ── Segment 3: Attrition Risk ────────────────────────────────────────────────
+  // Low people + low coaching = revolving door problem
+  if (d.people <= 40 && d.coaching <= 45) {
+    const onboarding = scores["onboarding"]  ?? 0;
+    const rolePlay   = scores["role-play"]   ?? 0;
+    const rideAlongs = scores["ride-alongs"] ?? 0;
+
+    const noOnboarding = onboarding <= 2;
+    const noCoaching   = rolePlay <= 2 && rideAlongs <= 2;
+
+    const flavor = noOnboarding ? "no-onboarding"
+      : noCoaching   ? "no-coaching"
+      : "default";
+
+    const descriptions: Record<string, string> = {
+      "no-onboarding":
+        "You hire based on energy and experience, throw them in the field, and hope they figure it out. Some do. Most don't. The ones who leave take their pipeline with them — and 4–6 months of your time and recruiting costs go with them. The industry average rep tenure without onboarding structure is 5 months.",
+      "no-coaching":
+        "Your team has never been through a real role-play. They've never had a manager sit with them on a live call or ride-along and debrief what happened. That means every mistake they make is invisible — and every mistake costs you a deal. Skills plateau when there's no practice structure.",
+      "default":
+        "The infrastructure to develop and retain great salespeople isn't in place yet. When good people leave — and they will — the knowledge walks out with them. The fix isn't paying more. It's building the system that makes people want to stay and grow.",
+    };
+
     return {
       primary: "Attrition Risk",
-      secondary: "People-Systems Gap",
+      secondary: "People Infrastructure Gap",
       emoji: "🔄",
       color: "#f97316",
-      tagline: "Great people are hard to find. Even harder to keep without systems.",
-      description:
-        "You're running on the strength of individual people — not systems. When your best person walks out, so does their knowledge, their customer relationships, and their close rate.",
-      strengths: [
-        "You recognize the need for people infrastructure",
-        "Existing team relationships are a real asset",
-        "Quality delivery track record helps with retention",
-      ],
+      tagline: "Your best hire is one resignation away from your biggest problem.",
+      description: descriptions[flavor],
+      strengths: buildStrengths(d, scores),
       opportunities: [
-        "Build a hiring process that finds coachable A-players, not just experienced ones",
-        "Create a 30/60/90-day onboarding track so new people ramp fast",
-        "Install a formal sales role agreement to set clear expectations",
-        "Develop a behavioral screening process before making any hire",
+        "Build a 30/60/90-day onboarding track — this single change reduces first-year turnover by 50%+",
+        "Implement weekly ride-alongs or recorded call reviews so coaching is systematic, not reactive",
+        "Add a behavioral screening step to your hiring process before you make the next offer",
+        "Create a formal Sales Role Agreement so expectations are set in writing before day one",
+        "Run monthly role-plays on your 3 most common objections — practice in a safe environment beats learning on live prospects",
       ],
       insight:
-        "70% of sales reps fail in the first 6 months — almost entirely due to inadequate onboarding and zero process to follow. The rep isn't usually the problem. The system is.",
-      urgency:
-        "One key departure from your current team changes everything. Get systems in place before that happens.",
+        "70% of sales reps fail in the first 6 months — almost always because of onboarding failure, not talent failure. The rep isn't usually the problem. The system is. Contractors who fix this see rep ramp time drop from 4–6 months to 6–8 weeks.",
+      urgency: buildUrgency(d, "people"),
     };
   }
 
-  if (pct >= 70) {
+  // ── Segment 4: Growth-Stalled ────────────────────────────────────────────────
+  // Mid scores across the board — decent but not breaking through
+  if (d.overall >= 40 && d.overall < 65) {
+    const lowestDimension = getLowestDimension(d);
+
+    const bottleneckInsights: Record<string, string> = {
+      process:
+        "Your process score is the drag. You have people and some accountability in place — the ceiling is that your sales steps aren't standardized enough to deliver consistent results across every rep.",
+      team:
+        "Your team is running mostly on inbound. That means your revenue is downstream of your marketing — and when leads slow down, so does everything else. Self-generated pipeline is the lever that breaks that dependency.",
+      people:
+        "You've got process and some accountability — but the people infrastructure (hiring, onboarding, retention) is the missing link. One good hire who churns because there was no ramp structure is an expensive lesson.",
+      coaching:
+        "The sales cadence and review structure is the gap. You can see what needs to improve — but without weekly coaching and accountability, the needle doesn't move fast enough.",
+      valuation:
+        "Everything else is moving — but the valuation infrastructure isn't in place. A buyer looking at your business today would see a revenue story, not a system story. That distinction matters when it's time to negotiate a multiple.",
+    };
+
+    return {
+      primary: "Growth-Stalled",
+      secondary: "Ceiling Without a Catalyst",
+      emoji: "📈",
+      color: "#eab308",
+      tagline: "Solid foundation. The ceiling is infrastructure, not effort.",
+      description:
+        "Revenue is real. Reputation is real. The team is functional. What's missing is the layer of system that takes 'working hard' and converts it into 'scaling reliably.' The business has outgrown hustle as a strategy — and hasn't yet installed what replaces it.",
+      strengths: buildStrengths(d, scores),
+      opportunities: buildOpportunitiesFromLowest(d, scores),
+      insight: bottleneckInsights[lowestDimension],
+      urgency: buildUrgency(d, "stalled"),
+    };
+  }
+
+  // ── Segment 5: Scale-Ready ───────────────────────────────────────────────────
+  // High overall — optimizing, not building from scratch
+  if (d.overall >= 65) {
+    const nearExit = d.valuation >= 65;
+
     return {
       primary: "Scale-Ready",
-      secondary: "Optimization Phase",
+      secondary: nearExit ? "Exit Optimization Phase" : "Performance Optimization Phase",
       emoji: "🚀",
       color: "#22c55e",
-      tagline: "Strong foundation. Time to optimize for a premium exit.",
-      description:
-        "You're ahead of most contractors in your space. The infrastructure is there — now it's about squeezing more performance out of what's working and making sure everything is fully documented for a future buyer.",
-      strengths: [
-        "Documented processes and accountability systems in place",
-        "Measurable KPIs and pipeline visibility",
-        "Team that can perform with less owner involvement",
-        "Consistent revenue story that attracts premium buyers",
-      ],
-      opportunities: [
-        "Layer in advanced coaching cadences to push top performers further",
-        "Focus on valuation optimization — document everything buyers look for",
-        "Expand add-on and upgrade revenue through systematic upselling",
-        "Build out a referral engine to make revenue even more predictable",
-      ],
-      insight:
-        "At this stage, a 10% improvement in close rate or average ticket adds disproportionate bottom-line value — and that compounds directly into exit valuation.",
-      urgency:
-        "The gap between a good exit and a great exit is narrower than you think — and mostly about documentation and coaching consistency.",
+      tagline: nearExit
+        ? "Strong foundation. Time to maximize your exit multiple."
+        : "Strong foundation. Time to compound what's working.",
+      description: nearExit
+        ? "You're ahead of 85% of contractors in your space. The infrastructure is there — now it's about making sure everything is documented well enough that a buyer sees a machine, not a team. The difference between your current trajectory and a premium exit multiple is narrower than you think — and mostly about consistency documentation."
+        : "The infrastructure is genuinely in place. Your scores reflect a business that's built to perform — not just hustle. The opportunity from here isn't fixing what's broken. It's compounding what's working and filling the specific gaps that are still holding back ceiling-level performance.",
+      strengths: buildStrengths(d, scores),
+      opportunities: buildOpportunitiesFromLowest(d, scores),
+      insight: nearExit
+        ? "At this maturity level, a 10% improvement in close rate or average ticket adds disproportionate bottom-line impact — and that compounds directly into exit valuation. Buyers pay full price for businesses that are already performing like a system."
+        : "The gap between a strong business and an elite one is usually found in the 20% of metrics that don't get tracked. Your next breakthrough is in the data you're not measuring yet.",
+      urgency: buildUrgency(d, "scale-ready"),
     };
   }
 
+  // ── Fallback ─────────────────────────────────────────────────────────────────
   return {
-    primary: "Growth-Stalled",
-    secondary: "Systems Gap",
-    emoji: "📈",
+    primary: "Early Stage",
+    secondary: "Foundation Building",
+    emoji: "🔧",
     color: "#eab308",
-    tagline: "You've built something real. The ceiling is your sales infrastructure.",
+    tagline: "Every elite sales operation started exactly here.",
     description:
-      "Revenue is there. Reputation is there. What's missing is the system that takes it to the next level — both in performance and in what a future buyer sees when they look under the hood.",
-    strengths: [
-      "Established market presence and customer base",
-      "Core service quality that customers trust",
-      "Demonstrated ability to generate consistent business",
-    ],
+      "The scoring suggests a sales operation in early stages — which means the upside is enormous. The contractors who systematize early get a permanent competitive advantage over those who wait until they're forced to.",
+    strengths: buildStrengths(d, scores),
     opportunities: [
-      "Define and document your complete sales process end-to-end",
-      "Build accountability systems around measurable KPIs",
-      "Create a referral program to generate predictable, high-margin revenue",
-      "Start reducing owner involvement in day-to-day sales decisions",
+      "Define your sales process end-to-end before adding more people",
+      "Start measuring close rate and lead response time this week",
+      "Build a simple onboarding guide for your first or next hire",
+      "Create a follow-up cadence and make it non-negotiable",
     ],
     insight:
-      "Most contractors at this stage aren't far from a breakthrough. The missing piece is usually structure, not effort.",
-    urgency:
-      "Without systems, growth past the current ceiling requires more of YOU — not more leverage from a team.",
+      "The ROI on installing sales infrastructure early — before you're dependent on it — is 10× higher than fixing it under pressure. Most contractors wait too long.",
+    urgency: buildUrgency(d, "early"),
   };
 }
+
+// ─── DYNAMIC STRENGTHS BUILDER ───────────────────────────────────────────────
+// Generates strengths list from actual high-scoring dimensions, not assumptions.
+
+function buildStrengths(d: Dimensions, scores: Scores): string[] {
+  const strengths: string[] = [];
+
+  if (d.process >= 60)
+    strengths.push("Your sales process has real structure — that's ahead of most contractors at your stage");
+  if (d.team >= 60)
+    strengths.push("Your team is generating business proactively, not just waiting for inbound");
+  if (d.people >= 60)
+    strengths.push("You've invested in hiring and onboarding infrastructure — reps have a real chance to succeed");
+  if (d.coaching >= 60)
+    strengths.push("Regular coaching and accountability cadences are in place — that's a genuine differentiator");
+  if (d.valuation >= 60)
+    strengths.push("Your valuation readiness is strong — the business has the bones a buyer wants to see");
+  if ((scores["owner-dependency"] ?? 0) >= 4)
+    strengths.push("Your sales operation can run without you in the room — that alone is worth a premium multiple");
+  if ((scores["referral-program"] ?? 0) >= 4)
+    strengths.push("Active referral program generating high-margin, predictable pipeline");
+  if ((scores["onspot-estimates"] ?? 0) >= 4)
+    strengths.push("On-spot estimates close 2–3× faster than follow-up quotes — you're already doing this");
+  if ((scores["contact-speed"] ?? 0) >= 4)
+    strengths.push("Fast lead response time — this alone puts you ahead of 60% of contractors");
+
+  // Always have at least 2 strengths (floor)
+  if (strengths.length === 0) {
+    strengths.push("You're asking the right questions — most contractors never audit their sales operation at all");
+    strengths.push("Taking this assessment is the first step most competitors will never take");
+  } else if (strengths.length === 1) {
+    strengths.push("You've built a real business with real customers — that foundation is what systems plug into");
+  }
+
+  return strengths.slice(0, 5);
+}
+
+// ─── DYNAMIC URGENCY BUILDER ─────────────────────────────────────────────────
+
+function buildUrgency(d: Dimensions, context: string): string {
+  const urgencyMap: Record<string, string> = {
+    exit:
+      "If exit is on your horizon in the next 2–3 years, the window to install and demonstrate these systems is right now. Buyers want to see 12–18 months of owner-independent performance before they sign. Every month you wait is a month that clock doesn't start.",
+    scale:
+      "Every month without a documented process is a month your team is losing deals you'd have closed yourself. The compounding cost of that gap — in closed deals, rep turnover, and missed pipeline — adds up faster than most owners realize.",
+    people:
+      "One key resignation from your current team resets the clock. The cost of a single bad hire or unplanned departure — recruiting, lost pipeline, retraining — runs $40K–$80K in most specialty contracting businesses. Systems are insurance.",
+    stalled:
+      "The businesses that break through plateaus aren't the ones that work harder — they're the ones that install the right infrastructure at the right time. The window to do that before your competitors do is shorter than it feels.",
+    "scale-ready":
+      "The gap between your current trajectory and a premium exit is mostly documentation and coaching consistency — both of which compound fast. Businesses at this stage who optimize aggressively in the next 12 months are the ones that set the ceiling for everyone else.",
+    early:
+      "The contractors who install sales infrastructure early — before they're forced to — get a permanent advantage over those who wait. The time to build the system is when you have the bandwidth to do it right.",
+  };
+
+  return urgencyMap[context] ?? urgencyMap["stalled"];
+}
+
+// ─── LOWEST DIMENSION FINDER ─────────────────────────────────────────────────
+
+function getLowestDimension(d: Dimensions): keyof Omit<Dimensions, "overall"> {
+  const dims = { process: d.process, team: d.team, people: d.people, coaching: d.coaching, valuation: d.valuation };
+  return (Object.entries(dims).sort((a, b) => a[1] - b[1])[0][0]) as keyof typeof dims;
+}
+
+// ─── OPPORTUNITIES FROM LOWEST DIMENSION ────────────────────────────────────
+
+function buildOpportunitiesFromLowest(d: Dimensions, scores: Scores): string[] {
+  const lowest = getLowestDimension(d);
+
+  const opps: Record<string, string[]> = {
+    process: [
+      "Document your top 5 sales steps so every rep runs the same play, every time",
+      "Install a lead response SLA — first contact within 5 minutes is the benchmark that wins",
+      "Build an on-spot estimate template so deals close same-day, not 3 follow-ups later",
+      "Create a weekly close-rate review — visibility drives accountability",
+    ],
+    team: [
+      "Launch a neighborhood canvassing system — every installed job should generate 3–5 new conversations",
+      "Build a self-gen expectation into every rep's role — inbound-only reps are a revenue liability",
+      "Add a structured upgrade ask to every estimate — 50%+ of jobs should include at least one add-on",
+      "Create a referral ask template for job completion so referrals happen systematically, not by luck",
+    ],
+    people: [
+      "Build a 30/60/90-day onboarding track so new hires ramp in weeks, not months",
+      "Add a behavioral screening step before your next hire — coachability beats experience",
+      "Create a Sales Role Agreement template covering territory, commission, and non-solicitation",
+      "Build a hiring VSL so A-players know they're applying to a professional operation",
+    ],
+    coaching: [
+      "Launch weekly 30-min ride-alongs or recorded call reviews — live observation accelerates improvement faster than anything else",
+      "Run monthly role-plays on your top 3 objections so reps have practiced answers, not improvised ones",
+      "Build a pipeline review cadence so every lead is visible and nothing stalls without a reason",
+      "Create a KPI dashboard — close rate, lead response time, follow-up rate — reviewed every week",
+    ],
+    valuation: [
+      "Document your complete sales process — this is the #1 thing buyers look for in due diligence",
+      "Build a referral program to show buyers a second, defensible pipeline channel",
+      "Reduce owner involvement in sales decisions — every step you remove adds to the multiple",
+      "Track and present 12+ months of KPI data so a buyer sees a trend, not a snapshot",
+    ],
+  };
+
+  return opps[lowest] ?? opps["process"];
+}
+
+// ─── TEASER TEXT ENGINE ──────────────────────────────────────────────────────
+// Generates a blurred-result teaser based on answers — specific enough to feel
+// accurate, but not enough to give away the full report.
+
+export function getTeaserText(scores: Scores): string {
+  const d = computeDimensions(scores);
+
+  const ownerDep  = scores["owner-dependency"]     ?? 0;
+  const playbook  = scores["documented-playbook"]  ?? 0;
+  const revPred   = scores["revenue-predictability"] ?? 0;
+  const closeTrack = scores["close-tracking"]      ?? 0;
+  const onboarding = scores["onboarding"]          ?? 0;
+  const rideAlongs = scores["ride-alongs"]         ?? 0;
+
+  // Exit-specific insight — answer-driven, no identity
+  if (d.valuation <= 35 && ownerDep <= 2 && playbook <= 2) {
+    return `Your valuation dimension scored in the bottom quartile — specifically around owner dependency and documented process. These are the two variables that most directly compress exit multiples for specialty contractors. There's a specific dollar figure attached to that gap. Your full report breaks it down.`;
+  }
+
+  if (d.valuation <= 45 && revPred <= 2) {
+    return `Your revenue predictability score is flagging a pattern that sophisticated buyers price as risk. Month-to-month volatility reduces EBITDA multiples by 1–2× in most specialty contractor transactions — even when the annual number looks healthy. Your full report shows the fix.`;
+  }
+
+  if (d.process <= 35 && ownerDep <= 2) {
+    return `Your scores are showing a pattern we see constantly in high-performing owner-operators: the process lives in your head, not on paper. The business performs because you perform. Your full report quantifies exactly what that's costing you — and what it takes to change it.`;
+  }
+
+  if (d.people <= 35 && onboarding <= 2) {
+    return `Your people-systems score suggests your hiring and onboarding infrastructure hasn't kept pace with your ambitions for the team. The stat that usually surprises people here: 70% of rep failures are onboarding failures — not talent failures. Your full report shows where the gap is.`;
+  }
+
+  if (d.coaching <= 35 && rideAlongs <= 2) {
+    return `Your coaching and accountability score revealed something specific: the reps are practicing on live prospects instead of in structured training. That's where deals are being lost invisibly — not in the field, but in the prep. Your full report identifies the highest-leverage fix.`;
+  }
+
+  if (closeTrack <= 2) {
+    return `You're running the business without one of the most important instruments in sales: close rate by rep. Without that number, you can't tell who's quietly losing deals, who's your highest leveraged performer, or where coaching should be focused. Your full report shows what that visibility unlocks.`;
+  }
+
+  if (d.overall >= 70) {
+    return `Your overall score puts you ahead of most contractors in this space. Your full report identifies the specific 2–3 gaps between where you are and peak performance — because at this stage, it's optimization, not rebuilding.`;
+  }
+
+  return `Your scorecard reveals a specific pattern across 5 dimensions — with clear gaps between your current trajectory and where the highest-performing contractors in this trade are operating. Your full report shows exactly where those gaps are, and what each one is worth to fix.`;
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
 
 export function scoreColor(pct: number): string {
   if (pct >= 80) return "#22c55e";
@@ -374,27 +763,19 @@ export function isValidPhone(phone: string): boolean {
   if (digits.length !== 10) return false;
   if (digits[0] === "0" || digits[0] === "1") return false;
   if (/^(\d)\1{9}$/.test(digits)) return false;
-  if (digits === "1234567890" || digits === "0987654321") return false;
+  const fakeNumbers = ["1234567890", "0987654321", "1111111111", "2222222222",
+    "3333333333", "4444444444", "5555555555", "6666666666", "7777777777",
+    "8888888888", "9999999999", "1231231234", "0000000000"];
+  if (fakeNumbers.includes(digits)) return false;
   return true;
 }
 
 export function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
-}
-
-export function getTeaserText(scores: Scores, segment: SegmentResult): string {
-  const ownerDep = scores["owner-dependency"] || 0;
-  const playbook = scores["documented-playbook"] || 0;
-  const revPred = scores["revenue-predictability"] || 0;
-
-  if (ownerDep <= 2 && playbook <= 2) {
-    return "Your scores reveal significant owner dependency — which is the single variable that most impacts exit valuation in specialty contracting. There's a specific dollar figure attached to that gap, and your full report breaks it down.";
-  }
-  if (revPred <= 2) {
-    return "Your revenue predictability score suggests month-to-month volatility that buyers typically discount. You're likely leaving real money on the table at exit — and the fix is more systematic than you'd expect.";
-  }
-  if (segment.primary === "Scale-Ready") {
-    return "You're ahead of 80% of contractors in your space. Your full results reveal the specific optimization gaps between where you are and a premium exit multiple.";
-  }
-  return "Your scorecard reveals a specific pattern common in fence & specialty contractors who are building toward an exit — with a clear, addressable gap between current trajectory and maximum valuation. Your full report shows exactly where that gap lives.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return false;
+  // Block obvious fake/placeholder domains
+  const fakeDomains = ["test.com", "example.com", "fake.com", "temp.com",
+    "noreply.com", "mailinator.com", "guerrillamail.com", "throwaway.com"];
+  const domain = email.split("@")[1]?.toLowerCase();
+  if (domain && fakeDomains.includes(domain)) return false;
+  return true;
 }
