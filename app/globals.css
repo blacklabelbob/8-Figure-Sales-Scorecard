@@ -252,6 +252,68 @@ input, button { -webkit-tap-highlight-color: transparent; }
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ─── CTA CARDS (results page bottom) ───────────────────────────── */
+.cta-card-calendar,
+.cta-card-phone {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  text-decoration: none;
+}
+.cta-card-calendar {
+  background: linear-gradient(135deg, #1a3a6e, #0f2550);
+  border: 1px solid rgba(39,145,232,0.35);
+  box-shadow: 0 4px 24px rgba(39,145,232,0.2);
+}
+.cta-card-calendar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(39,145,232,0.32);
+}
+.cta-card-phone {
+  background: linear-gradient(135deg, #5c1414, #3d0d0d);
+  border: 1px solid rgba(239,68,68,0.35);
+  box-shadow: 0 4px 24px rgba(239,68,68,0.2);
+}
+.cta-card-phone:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(239,68,68,0.32);
+}
+.cta-card-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.08);
+}
+.cta-card-text {
+  flex: 1;
+}
+.cta-card-title {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.3;
+  margin-bottom: 3px;
+}
+.cta-card-sub {
+  color: rgba(255,255,255,0.45);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.cta-card-arrow {
+  color: rgba(255,255,255,0.3);
+  font-size: 20px;
+  font-weight: 300;
+  flex-shrink: 0;
+}
+
 /* ─── SOCIAL PROOF BAR ───────────────────────────────────────────── */
 .social-proof {
   background: rgba(0,217,255,0.05);

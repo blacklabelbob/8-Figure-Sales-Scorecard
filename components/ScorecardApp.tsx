@@ -201,32 +201,14 @@ export default function ScorecardApp() {
               your segment, and a personalized analysis — including what it means for your business trajectory.
             </p>
 
-            {/* Social Proof */}
+            {/* Social Proof — single tight strip */}
             <div className="social-proof" style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 28, lineHeight: 1 }}>🏆</div>
-              <div>
-                <div style={{ color: "#fff", fontSize: 13, fontWeight: 700, lineHeight: 1.4 }}>
-                  Trusted by 1,000+ specialty contractors
-                </div>
-                <div style={{ color: "#555", fontSize: 12, marginTop: 2 }}>
-                  We&apos;ve helped clients add over <strong style={{ color: "#00D9FF" }}>$2B in collective revenue</strong> — 92% hit their KPIs within 6 months.
-                </div>
+              <div style={{ fontSize: 24, lineHeight: 1, flexShrink: 0 }}>🏆</div>
+              <div style={{ color: "#666", fontSize: 12, lineHeight: 1.5 }}>
+                <strong style={{ color: "#fff" }}>1,000+ contractors</strong> · <strong style={{ color: "#00D9FF" }}>$2B+ revenue</strong> · <strong style={{ color: "#22c55e" }}>92% hit KPIs in 6 months</strong>
               </div>
             </div>
 
-            {/* Stats */}
-            <div className="section-card" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, textAlign: "center", marginBottom: 20 }}>
-              {[
-                { v: "3 min",           l: "To complete" },
-                { v: String(TOTAL_QUESTIONS), l: "Questions" },
-                { v: "Free",            l: "Assessment" },
-              ].map((s) => (
-                <div key={s.l}>
-                  <div style={{ fontWeight: 800, fontSize: 18, color: "#00D9FF" }}>{s.v}</div>
-                  <div style={{ color: "#555", fontSize: 11, marginTop: 2 }}>{s.l}</div>
-                </div>
-              ))}
-            </div>
 
             {/* What you'll discover */}
             <div className="section-card" style={{ marginBottom: 24 }}>
@@ -787,18 +769,11 @@ export default function ScorecardApp() {
               </motion.div>
             )}
 
-            {/* ── SECTION 9: Social Proof ──────────────────────────────── */}
+            {/* ── Social Proof compact strip ────────────────────────── */}
             <div className="social-proof" style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>🏆</div>
-              <div>
-                <div style={{ color: "#fff", fontSize: 13, fontWeight: 700, lineHeight: 1.4, marginBottom: 4 }}>
-                  1,000+ contractor clients trust STG
-                </div>
-                <div style={{ color: "#777", fontSize: 12, lineHeight: 1.5 }}>
-                  Over <strong style={{ color: "#00D9FF" }}>$2B in collective revenue</strong> added for our clients.{" "}
-                  <strong style={{ color: "#22c55e" }}>92% of clients</strong> hit their KPIs within 6 months.{" "}
-                  Industry-average close rate improvement: <strong style={{ color: "#22c55e" }}>30–40%</strong> in the first 6 months.
-                </div>
+              <div style={{ fontSize: 24, lineHeight: 1, flexShrink: 0 }}>🏆</div>
+              <div style={{ color: "#666", fontSize: 12, lineHeight: 1.5 }}>
+                <strong style={{ color: "#fff" }}>1,000+ contractors</strong> &nbsp;·&nbsp; <strong style={{ color: "#00D9FF" }}>$2B+ revenue added</strong> &nbsp;·&nbsp; <strong style={{ color: "#22c55e" }}>92% hit KPIs in 6 months</strong>
               </div>
             </div>
 
@@ -806,48 +781,51 @@ export default function ScorecardApp() {
             <div className="results-section-header">🚀 Your Next Step</div>
             <div className="section-divider" />
 
-            <div style={{
-              background: "linear-gradient(135deg, rgba(0,40,80,0.5), rgba(0,30,60,0.3))",
-              border: "1px solid rgba(39,145,232,0.2)",
-              borderRadius: 20,
-              padding: "24px 20px",
-              marginBottom: 20,
-            }}>
-              <p style={{ color: "#aaa", fontSize: 14, lineHeight: 1.65, marginBottom: 20, textAlign: "center" }}>
-                Based on your score, a 20-minute conversation with one of our Senior Growth Consultants could
-                identify <strong style={{ color: "#fff" }}>the single change that moves your revenue most</strong>.
-                No pitch. No pressure. Just clarity.
-              </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
 
-              {/* Option 1 — Book a Call */}
+              {/* Option 1 — Book a Call (calendar-themed) */}
               <a
                 href="https://calendly.com/robert-salestransformationgroup/stg-discovery-call"
                 target="_blank" rel="noopener noreferrer"
-                style={{ display: "block", textDecoration: "none", marginBottom: 14 }}
+                style={{ textDecoration: "none" }}
               >
-                <button className="cta-btn" style={{ width: "100%", fontSize: 15 }}>
-                  📅 Book a Time with a Sr. Consultant
-                </button>
+                <div className="cta-card-calendar">
+                  <div className="cta-card-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                      <line x1="16" y1="2" x2="16" y2="6"/>
+                      <line x1="8" y1="2" x2="8" y2="6"/>
+                      <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                  </div>
+                  <div className="cta-card-text">
+                    <div className="cta-card-title">Book a Time with a Sr. Consultant</div>
+                    <div className="cta-card-sub">Pick a slot that works for you — free 20-min call</div>
+                  </div>
+                  <div className="cta-card-arrow">→</div>
+                </div>
               </a>
 
-              {/* Divider */}
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-                <div style={{ flex: 1, height: 1, background: "#222" }} />
-                <span style={{ color: "#333", fontSize: 12 }}>or</span>
-                <div style={{ flex: 1, height: 1, background: "#222" }} />
-              </div>
-
-              {/* Option 2 — Call Now */}
+              {/* Option 2 — Call Now (phone-themed) */}
               <a
                 href="tel:2393645062"
-                style={{ display: "block", textDecoration: "none" }}
+                style={{ textDecoration: "none" }}
               >
-                <button className="cta-btn cta-btn-red" style={{ width: "100%", fontSize: 17, padding: "20px 24px", letterSpacing: "0.3px" }}>
-                  📞 Let&apos;s Talk Now — (239) 364-5062
-                </button>
+                <div className="cta-card-phone">
+                  <div className="cta-card-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.28h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.86a16 16 0 0 0 6.06 6.06l.95-.94a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                    </svg>
+                  </div>
+                  <div className="cta-card-text">
+                    <div className="cta-card-title">Let&apos;s Talk Right Now</div>
+                    <div className="cta-card-sub">Connect with a Growth Consultant instantly</div>
+                  </div>
+                  <div className="cta-card-arrow">→</div>
+                </div>
               </a>
 
-              <p style={{ color: "#333", fontSize: 12, textAlign: "center", marginTop: 14 }}>
+              <p style={{ color: "#333", fontSize: 12, textAlign: "center", marginTop: 2 }}>
                 🔒 We will never share your information.
               </p>
             </div>
