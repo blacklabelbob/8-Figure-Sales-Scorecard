@@ -167,30 +167,32 @@ export default function ScorecardApp() {
         {step === "intro" && (
           <motion.div key="intro" {...fadeUp} style={{ padding: "32px 20px" }}>
             {/* Logo */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 32 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 32 }}>
               <div style={{
                 width: 36, height: 36, borderRadius: 8,
                 background: "linear-gradient(135deg,#00D9FF,#2791e8)",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontWeight: 900, fontSize: 13, color: "#000", flexShrink: 0,
               }}>STG</div>
-              <span style={{ color: "#555", fontSize: 13 }}>Sales Transformation Group</span>
+              <span style={{ color: "#fff", fontSize: 26, fontWeight: 900, letterSpacing: "-0.3px" }}>Sales Transformation Group</span>
             </div>
 
             {/* Badge */}
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 6,
-              background: "rgba(0,217,255,0.08)", border: "1px solid rgba(0,217,255,0.2)",
-              borderRadius: 100, padding: "5px 14px", marginBottom: 14,
-            }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00D9FF", display: "inline-block", animation: "pulse-dot 1.5s ease-in-out infinite" }} />
-              <span style={{ color: "#00D9FF", fontSize: 11, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase" }}>
-                Free · 3 Minutes · Instant Results
-              </span>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: "rgba(0,217,255,0.08)", border: "1px solid rgba(0,217,255,0.2)",
+                borderRadius: 100, padding: "5px 14px",
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00D9FF", display: "inline-block", animation: "pulse-dot 1.5s ease-in-out infinite" }} />
+                <span style={{ color: "#00D9FF", fontSize: 11, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase" }}>
+                  Free · 3 Minutes · Instant Results
+                </span>
+              </div>
             </div>
 
             {/* Headline */}
-            <h1 style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.18, letterSpacing: "-0.5px", marginBottom: 14 }}>
+            <h1 style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.18, letterSpacing: "-0.5px", marginBottom: 14, textAlign: "center" }}>
               Is Your Sales Team{" "}
               <span className="gradient-text">Ready to Scale</span>
               {" "}—{" "}
@@ -201,18 +203,18 @@ export default function ScorecardApp() {
               your segment, and a personalized analysis — including what it means for your business trajectory.
             </p>
 
-            {/* Social Proof — single tight strip */}
-            <div className="social-proof" style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 24, lineHeight: 1, flexShrink: 0 }}>🏆</div>
-              <div style={{ color: "#666", fontSize: 12, lineHeight: 1.5 }}>
-                <strong style={{ color: "#fff" }}>1,000+ contractors</strong> · <strong style={{ color: "#00D9FF" }}>$2B+ revenue</strong> · <strong style={{ color: "#22c55e" }}>92% hit KPIs in 6 months</strong>
+            {/* Social Proof — centered single line */}
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+              <div className="social-proof" style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 22, lineHeight: 1 }}>🏆</span>
+                <span style={{ color: "#fff", fontSize: 13, fontWeight: 700 }}>Trusted by over 1,000+ contractors</span>
               </div>
             </div>
 
 
             {/* What you'll discover */}
             <div className="section-card" style={{ marginBottom: 24 }}>
-              <p style={{ color: "#666", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 12 }}>
+              <p style={{ color: "#00D9FF", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 12 }}>
                 What you&apos;ll discover
               </p>
               {[
@@ -250,7 +252,7 @@ export default function ScorecardApp() {
             {/* Progress bar */}
             <div style={{ marginBottom: 24 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                <span style={{ color: "#555", fontSize: 12 }}>
+                <span style={{ color: "#FF6B35", fontSize: 12, fontWeight: 700 }}>
                   Section {currentSection + 1} of {SECTIONS.length}
                 </span>
                 <span style={{ color: "#00D9FF", fontSize: 12, fontWeight: 600 }}>
@@ -297,9 +299,13 @@ export default function ScorecardApp() {
                       {q.text}
                     </p>
                     {q.context && (
-                      <p style={{ color: "#555", fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>
-                        {q.context}
-                      </p>
+                      <div style={{
+                        background: "rgba(255,107,53,0.06)", border: "1px solid rgba(255,107,53,0.15)",
+                        borderRadius: 8, padding: "8px 12px", marginBottom: 12,
+                      }}>
+                        <span style={{ color: "#FF6B35", fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.6px" }}>Data  </span>
+                        <span style={{ color: "#aaa", fontSize: 12, lineHeight: 1.5 }}>{q.context}</span>
+                      </div>
                     )}
 
                     {/* 1–5 rating buttons */}
@@ -311,8 +317,8 @@ export default function ScorecardApp() {
                             key={val}
                             onClick={() => handleScore(q.id, val)}
                             style={{
-                              border: `1.5px solid ${on ? colors[val - 1] : "#222"}`,
-                              background: on ? bgs[val - 1] : "#111",
+                              border: `1.5px solid ${on ? colors[val - 1] : "#333"}`,
+                              background: on ? bgs[val - 1] : "#1a1a1a",
                               borderRadius: 10, padding: "14px 4px",
                               display: "flex", flexDirection: "column",
                               alignItems: "center", cursor: "pointer",
@@ -321,7 +327,7 @@ export default function ScorecardApp() {
                               transform: on ? "scale(1.06)" : "scale(1)",
                             }}
                           >
-                            <span style={{ fontSize: 20, fontWeight: 900, color: on ? colors[val - 1] : "#444" }}>
+                            <span style={{ fontSize: 20, fontWeight: 900, color: on ? colors[val - 1] : "#888" }}>
                               {val}
                             </span>
                           </button>
@@ -329,8 +335,8 @@ export default function ScorecardApp() {
                       })}
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ color: "#444", fontSize: 10 }}>{q.labels[0]}</span>
-                      <span style={{ color: "#444", fontSize: 10 }}>{q.labels[1]}</span>
+                      <span style={{ color: "#666", fontSize: 10 }}>{q.labels[0]}</span>
+                      <span style={{ color: "#666", fontSize: 10 }}>{q.labels[1]}</span>
                     </div>
                   </motion.div>
                 );
