@@ -9,6 +9,7 @@ import {
   identifyRespondent,
   type Scores,
 } from "@/lib/scorecard-data";
+import type { CompanyProfile } from "@/app/api/enrich/route";
 
 type GateData = {
   name: string;
@@ -19,7 +20,9 @@ type GateData = {
 };
 
 export default function ScorecardApp() {
-  const [step, setStep] = useState<"intro" | "quiz" | "teaser" | "gate" | "results">("intro");
+  const [step, setStep] = useState<"intro" | "quiz" | "teaser" | "gate" | "loading" | "results">("intro");
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+  const [countdown, setCountdown] = useState(10);
   const [currentSection, setCurrentSection] = useState(0);
   const [scores, setScores] = useState<Scores>({});
   const [gateData, setGateData] = useState<GateData>({
@@ -40,6 +43,19 @@ export default function ScorecardApp() {
       const t = setTimeout(() => setScoreVisible(true), 400);
       return () => clearTimeout(t);
     }
+  }, [step]);
+
+  // ── Countdown timer while enrichment runs ─────────────────────────────────
+  useEffect(() => {
+    if (step !== "loading") return;
+    setCountdown(10);
+    const interval = setInterval(() => {
+      setCountdown((n) => {
+        if (n <= 1) { clearInterval(interval); return 0; }
+        return n - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
   }, [step]);
 
   // ── Auto-advance: when all questions in current section are answered ────────
@@ -119,28 +135,41 @@ export default function ScorecardApp() {
     if (!validateGate()) return;
     setSubmitting(true);
 
-    try {
-      await fetch("/api/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...gateData,
-          scores,
-          totalScore,
-          maxScore: MAX_SCORE,
-          pct,
-          dims,
-          segment: segment.primary,
-          secondarySegment: segment.secondary,
-          isKnownIdentity: identity.isKnown,
-          submittedAt: new Date().toISOString(),
-        }),
-      });
-    } catch (_) {
-      /* always proceed — don't gate on notification failures */
-    }
-
+    // Switch to loading/countdown screen immediately
+    setStep("loading");
     setSubmitting(false);
+
+    // Fire both calls in parallel — don't await sequentially
+    const enrichPromise = fetch("/api/enrich", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: gateData.email, company: gateData.company }),
+    })
+      .then((r) => r.json())
+      .then((d) => { if (d.profile) setCompanyProfile(d.profile); })
+      .catch(() => {}); // always silent
+
+    const submitPromise = fetch("/api/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...gateData,
+        scores,
+        totalScore,
+        maxScore: MAX_SCORE,
+        pct,
+        dims,
+        segment: segment.primary,
+        secondarySegment: segment.secondary,
+        isKnownIdentity: identity.isKnown,
+        submittedAt: new Date().toISOString(),
+      }),
+    }).catch(() => {});
+
+    // Minimum 10s countdown for dramatic effect, but wait for enrich to finish
+    const minDelay = new Promise((r) => setTimeout(r, 10000));
+    await Promise.all([enrichPromise, submitPromise, minDelay]);
+
     setStep("results");
   }
 
@@ -600,6 +629,98 @@ export default function ScorecardApp() {
         )}
 
         {/* ═══════════════════════════════════════════
+            LOADING / ENRICHMENT COUNTDOWN
+        ═══════════════════════════════════════════ */}
+        {step === "loading" && (
+          <motion.div key="loading" {...fadeUp}
+            style={{ padding: "60px 20px", textAlign: "center", minHeight: "100vh",
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}
+          >
+            {/* Animated ring countdown */}
+            <div style={{ position: "relative", width: 140, height: 140, marginBottom: 32 }}>
+              <svg width={140} height={140} viewBox="0 0 140 140" style={{ transform: "rotate(-90deg)" }}>
+                <circle cx={70} cy={70} r={58} fill="none" stroke="#1a1a1a" strokeWidth={8} />
+                <motion.circle
+                  cx={70} cy={70} r={58} fill="none"
+                  stroke="url(#countdownGrad)"
+                  strokeWidth={8}
+                  strokeLinecap="round"
+                  strokeDasharray={364.4}
+                  initial={{ strokeDashoffset: 0 }}
+                  animate={{ strokeDashoffset: 364.4 }}
+                  transition={{ duration: 10, ease: "linear" }}
+                />
+                <defs>
+                  <linearGradient id="countdownGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#00D9FF" />
+                    <stop offset="100%" stopColor="#FF6B35" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              {/* Number in center */}
+              <div style={{
+                position: "absolute", inset: 0,
+                display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "center",
+              }}>
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={countdown}
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.4 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ fontSize: 42, fontWeight: 900, color: "#fff", lineHeight: 1 }}
+                  >
+                    {countdown}
+                  </motion.span>
+                </AnimatePresence>
+                <span style={{ fontSize: 11, color: "#555", marginTop: 4 }}>seconds</span>
+              </div>
+            </div>
+
+            <h2 style={{ fontSize: 22, fontWeight: 900, marginBottom: 10, lineHeight: 1.2 }}>
+              Analyzing <span className="gradient-text">{gateData.company || "your company"}</span>...
+            </h2>
+            <p style={{ color: "#555", fontSize: 14, lineHeight: 1.65, maxWidth: 300, marginBottom: 36 }}>
+              We&apos;re cross-referencing your answers with industry benchmarks and pulling your company profile.
+            </p>
+
+            {/* Animated checklist of what's happening */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 300 }}>
+              {[
+                { label: "Scoring your 5 dimensions",         delay: 0 },
+                { label: "Mapping to your segment",            delay: 1.5 },
+                { label: "Pulling your company profile",       delay: 3.5 },
+                { label: "Generating personalized insights",   delay: 5.5 },
+                { label: "Preparing your full report",         delay: 8 },
+              ].map((item) => (
+                <motion.div
+                  key={item.label}
+                  initial={{ opacity: 0, x: -16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: item.delay, duration: 0.4 }}
+                  style={{ display: "flex", alignItems: "center", gap: 10 }}
+                >
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: item.delay + 0.2, type: "spring", stiffness: 300 }}
+                    style={{
+                      width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+                      background: "rgba(0,217,255,0.1)", border: "1px solid rgba(0,217,255,0.3)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: "#00D9FF", fontSize: 10, fontWeight: 700,
+                    }}
+                  >✓</motion.div>
+                  <span style={{ color: "#888", fontSize: 13 }}>{item.label}</span>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ═══════════════════════════════════════════
             RESULTS
         ═══════════════════════════════════════════ */}
         {step === "results" && (
@@ -624,6 +745,79 @@ export default function ScorecardApp() {
                 {gateData.company} · {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
               </p>
             </div>
+
+            {/* ── Company Profile Card (enrichment result) ───────────── */}
+            {companyProfile && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                style={{
+                  background: "linear-gradient(135deg, rgba(0,30,60,0.7), rgba(0,20,40,0.5))",
+                  border: "1px solid rgba(0,217,255,0.2)",
+                  borderRadius: 18, padding: "18px 20px",
+                  marginBottom: 20,
+                  display: "flex", alignItems: "flex-start", gap: 14,
+                }}
+              >
+                {/* Logo */}
+                {companyProfile.logoUrl && (
+                  <div style={{
+                    width: 52, height: 52, borderRadius: 12, overflow: "hidden",
+                    background: "#fff", flexShrink: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <img
+                      src={companyProfile.logoUrl}
+                      alt={companyProfile.name}
+                      style={{ width: 44, height: 44, objectFit: "contain" }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                  </div>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                    <span style={{
+                      fontSize: 17, fontWeight: 900,
+                      background: "linear-gradient(135deg, #00D9FF, #2791e8)",
+                      WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                    }}>
+                      {companyProfile.name}
+                    </span>
+                    {companyProfile.industry && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, color: "#FF6B35",
+                        background: "rgba(255,107,53,0.1)", border: "1px solid rgba(255,107,53,0.2)",
+                        borderRadius: 100, padding: "2px 8px", textTransform: "uppercase", letterSpacing: "0.5px",
+                      }}>
+                        {companyProfile.industry}
+                      </span>
+                    )}
+                  </div>
+                  {(companyProfile.location || companyProfile.employeeRange) && (
+                    <div style={{ display: "flex", gap: 12, marginBottom: 6 }}>
+                      {companyProfile.location && (
+                        <span style={{ color: "#555", fontSize: 11 }}>📍 {companyProfile.location}</span>
+                      )}
+                      {companyProfile.employeeRange && (
+                        <span style={{ color: "#555", fontSize: 11 }}>👥 {companyProfile.employeeRange} employees</span>
+                      )}
+                    </div>
+                  )}
+                  {companyProfile.description ? (
+                    <p style={{ color: "#777", fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                      {companyProfile.description.length > 160
+                        ? companyProfile.description.slice(0, 160) + "…"
+                        : companyProfile.description}
+                    </p>
+                  ) : (
+                    <p style={{ color: "#444", fontSize: 11, fontStyle: "italic", margin: 0 }}>
+                      {companyProfile.domain}
+                    </p>
+                  )}
+                </div>
+              </motion.div>
+            )}
 
             {/* ── SECTION 2: Score Ring ────────────────────────────────── */}
             <div className="results-section-header">📊 Your Overall Score</div>

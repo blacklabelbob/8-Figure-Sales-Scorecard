@@ -36,6 +36,8 @@ export type SegmentResult = {
 };
 
 // ─── IDENTITY DETECTION ──────────────────────────────────────────────────────
+// Add known prospects here. Each entry fires only when email OR company matches.
+// This is never shown to the public — it's purely server-side context injection.
 
 export type KnownIdentity = {
   isKnown: boolean;
@@ -46,27 +48,56 @@ export type KnownIdentity = {
   exitContext?: string;
 };
 
+type KnownContact = {
+  emailPatterns: string[];
+  companyPatterns: string[];
+  personName: string;
+  companyName: string;
+  hasAppointment: boolean;
+  appointmentNote: string;
+  exitContext?: string;
+};
+
+const KNOWN_CONTACTS: KnownContact[] = [
+  {
+    emailPatterns: ["hdraper@draperconstruction.net", "hdraper@draper", "homa@draper", "houma@draper"],
+    companyPatterns: ["draper fence", "draper fencing", "draper rail", "draper construction"],
+    personName: "Homa",
+    companyName: "Draper Fence & Rail",
+    hasAppointment: true,
+    appointmentNote:
+      "📅 You have an appointment with our Senior Growth Consultant Rob at 11 AM to discuss next steps on the proposal.",
+    exitContext:
+      "Based on our prior conversation, we know building toward an eventual exit is part of your longer-term vision — so pay particular attention to the Exit & Valuation Readiness section. The numbers in your full report reflect what a buyer would actually see today vs. what's possible in 18–24 months.",
+  },
+  // ── Add more known contacts below ─────────────────────────────────────────
+  // {
+  //   emailPatterns: ["john@acmeroofing.com"],
+  //   companyPatterns: ["acme roofing"],
+  //   personName: "John",
+  //   companyName: "Acme Roofing",
+  //   hasAppointment: true,
+  //   appointmentNote: "📅 You have a call scheduled with Rob on Thursday at 2 PM.",
+  // },
+];
+
 export function identifyRespondent(email: string, company: string): KnownIdentity {
   const e = email.toLowerCase().trim();
   const c = company.toLowerCase().trim();
 
-  const draperEmailPatterns = ["hdraper@draperconstruction.net","hdraper@draper","homa@draper","houma@draper","wahab"];
-  const draperCompanyPatterns = ["draper fence","draper fencing","draper rail","draper construction"];
-
-  const emailMatch   = draperEmailPatterns.some((p) => e.includes(p));
-  const companyMatch = draperCompanyPatterns.some((p) => c.includes(p));
-
-  if (emailMatch || companyMatch) {
-    return {
-      isKnown: true,
-      personName: "Homa",
-      companyName: "Draper Fence & Rail",
-      hasAppointment: true,
-      appointmentNote:
-        "📅 You have an appointment with our Senior Growth Consultant Rob at 11 AM to discuss next steps on the proposal.",
-      exitContext:
-        "Based on our prior conversation, we know building toward an eventual exit is part of your longer-term vision — so pay particular attention to the Exit & Valuation Readiness section. The numbers in your full report reflect what a buyer would actually see today vs. what's possible in 18–24 months.",
-    };
+  for (const contact of KNOWN_CONTACTS) {
+    const emailMatch   = contact.emailPatterns.some((p) => e.includes(p));
+    const companyMatch = contact.companyPatterns.some((p) => c.includes(p));
+    if (emailMatch || companyMatch) {
+      return {
+        isKnown: true,
+        personName: contact.personName,
+        companyName: contact.companyName,
+        hasAppointment: contact.hasAppointment,
+        appointmentNote: contact.appointmentNote,
+        exitContext: contact.exitContext,
+      };
+    }
   }
 
   return { isKnown: false };
