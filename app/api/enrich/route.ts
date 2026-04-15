@@ -140,7 +140,7 @@ ONLY output valid JSON. No markdown, no backticks, no explanation.`;
         "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-5-mini",
+        model: "gpt-4o-mini",
         messages: [{ role: "user", content }],
         max_tokens: 200,
         temperature: 0.2,
