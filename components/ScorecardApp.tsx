@@ -794,14 +794,9 @@ export default function ScorecardApp() {
                       </span>
                     )}
                   </div>
-                  {(companyProfile.location || companyProfile.employeeRange) && (
-                    <div style={{ display: "flex", gap: 12, marginBottom: 6 }}>
-                      {companyProfile.location && (
-                        <span style={{ color: "#555", fontSize: 11 }}>📍 {companyProfile.location}</span>
-                      )}
-                      {companyProfile.employeeRange && (
-                        <span style={{ color: "#555", fontSize: 11 }}>👥 {companyProfile.employeeRange} employees</span>
-                      )}
+                  {companyProfile.location && (
+                    <div style={{ marginBottom: 6 }}>
+                      <span style={{ color: "#555", fontSize: 11 }}>📍 {companyProfile.location}</span>
                     </div>
                   )}
                   {companyProfile.description ? (
